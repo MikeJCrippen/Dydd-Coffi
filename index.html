@@ -12,13 +12,64 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Bricolage+Grotesque:wght@700;800&display=swap');
+      
+      :root {
+        --amber-glow: 245, 158, 11;
+      }
+
       body {
         font-family: 'Plus Jakarta Sans', sans-serif;
         background-color: #050505;
         color: #F9FAFB;
         margin: 0;
+        overflow-x: hidden;
       }
+
       .font-display { font-family: 'Bricolage Grotesque', sans-serif; }
+
+      .glass-card {
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%);
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .btn-primary {
+        background: #f59e0b;
+        color: #000;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 10px 30px -10px rgba(245, 158, 11, 0.4);
+      }
+      
+      .btn-primary:active {
+        transform: scale(0.95);
+        filter: brightness(0.9);
+      }
+
+      .btn-secondary {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: #fff;
+        backdrop-filter: blur(10px);
+        transition: all 0.2s ease;
+      }
+
+      .btn-secondary:active {
+        background: rgba(255, 255, 255, 0.1);
+        transform: scale(0.95);
+      }
+
+      .fade-in {
+        animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      /* Hide debug log by default unless error */
+      #debug-log:empty { display: none; }
     </style>
   <script type="importmap">
 {
@@ -40,19 +91,17 @@
             <p class="text-stone-500 font-bold tracking-widest text-[10px] uppercase">Calibrating Portafilter...</p>
             <p id="debug-step" class="text-stone-700 text-[9px] mt-2 font-mono uppercase">Initializing Compiler</p>
           </div>
-          <div id="debug-log" class="text-left bg-black p-4 rounded-xl border border-white/5 text-[10px] font-mono text-stone-600 hidden overflow-auto max-h-40 max-w-xs mx-auto">
-            <!-- Logs will appear here -->
-          </div>
+          <div id="debug-log" class="text-left bg-black p-4 rounded-xl border border-white/5 text-[10px] font-mono text-stone-600 hidden overflow-auto max-h-40 max-w-xs mx-auto"></div>
         </div>
       </div>
     </div>
 
-    <!-- Load Babel Standalone -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
     <script type="module">
       const logEl = document.getElementById('debug-log');
       const stepEl = document.getElementById('debug-step');
+      const statusEl = document.getElementById('loading-status');
       
       function log(msg, isError = false) {
         console.log(msg);
@@ -67,8 +116,6 @@
         try {
           log("Compiler Ready");
           const transpiledFiles = {};
-          
-          // Order is critical here: Types -> App -> Index
           const files = [
             { id: './types', url: './types.ts' },
             { id: './App', url: './App.tsx' },
@@ -78,15 +125,10 @@
           for (const file of files) {
             stepEl.textContent = `Fetching ${file.url}...`;
             log(`Fetching ${file.url}`);
-            
             const response = await fetch(file.url);
             if (!response.ok) throw new Error(`HTTP ${response.status}: Failed to find ${file.url}`);
-            
             let code = await response.text();
 
-            // MANUAL LINKING:
-            // Since Blobs don't support relative paths, we replace './App' and './types' 
-            // with the actual Blob URLs we generated in the previous steps.
             if (file.id === './App') {
               log("Linking types.ts -> App.tsx");
               code = code.replace(/from\s+['"]\.\/types['"]/g, `from '${transpiledFiles['./types']}'`);
