@@ -1,6 +1,6 @@
 # ☕ BeanLog Raspberry Pi Setup
 
-This guide will help you host your premium espresso logger on your Raspberry Pi so you can access it from your Android device anywhere on your home network.
+This guide ensures your premium espresso logger runs perfectly on your Raspberry Pi without needing a complex build system.
 
 ## 🛠 Prerequisites
 - A Raspberry Pi (any model) running Raspberry Pi OS.
@@ -8,63 +8,63 @@ This guide will help you host your premium espresso logger on your Raspberry Pi 
 
 ---
 
-## 📂 1. Transfer the Files
-First, create a folder on your Pi and move your files (`index.html`, `App.tsx`, `types.ts`, `manifest.json`, etc.) into it.
-
-```bash
-mkdir ~/beanlog
-# Use SCP, SFTP, or a USB stick to move your project files into this directory.
-```
+## 📂 1. Setup the Folder
+Create a folder on your Pi and place all project files inside it:
+- `index.html`
+- `index.tsx`
+- `App.tsx`
+- `types.ts`
+- `manifest.json`
 
 ---
 
-## 🚀 2. Hosting the App
+## 🚀 2. Hosting (Fixing the Blank Screen)
+Standard Python servers don't know what a `.tsx` file is, so they serve them incorrectly. Use this custom script instead.
 
-### Option A: The "Quick Start" (Python)
-Best for testing immediately.
-1. Open a terminal on your Pi:
-   ```bash
-   cd ~/beanlog
-   python3 -m http.server 8080
-   ```
-2. On your Android phone, go to: `http://<YOUR_PI_IP>:8080`
+1. Create a file named `serve.py` in your project folder:
+```python
+import http.server
+import socketserver
 
-### Option B: The "Permanent" way (Nginx)
-Best for a stable, always-on experience.
-1. Install Nginx: `sudo apt update && sudo apt install nginx -y`
-2. Copy your files to the web directory: `sudo cp -r ~/beanlog/* /var/www/html/`
-3. Your app is live at `http://<YOUR_PI_IP>`
+PORT = 8080
+Handler = http.server.SimpleHTTPRequestHandler
+
+# This tells the browser that .tsx and .ts files are actually javascript
+Handler.extensions_map.update({
+    '.tsx': 'application/javascript',
+    '.ts': 'application/javascript',
+})
+
+with socketserver.TCPServer(("", PORT), Handler) as httpd:
+    print(f"☕ BeanLog active at http://localhost:{PORT}")
+    httpd.serve_forever()
+```
+
+2. Run it on your Pi:
+```bash
+python3 serve.py
+```
+
+3. Open Vivaldi on your Android and go to: `http://<YOUR_PI_IP>:8080`
 
 ---
 
 ## 🔒 3. Making it "Installable" (HTTPS)
-**Vivaldi and Chrome require HTTPS** to enable the PWA "Install" button.
+Vivaldi requires HTTPS for the **"Install app"** button to appear. 
 
-### The Easiest Solution: Tailscale
 1. Install Tailscale on your Pi: `curl -fsSL https://tailscale.com/install.sh | sh`
 2. Run `sudo tailscale up`.
 3. Enable **MagicDNS** and **HTTPS** in your Tailscale admin console.
-4. Access your app via your private URL: `https://raspberrypi.your-tailscale-id.ts.net`
+4. Access your app via your private URL: `https://raspberrypi.your-tailscale-id.ts.net:8080`
 
 ---
 
-## 📱 4. Installation Steps
-
-### If using Vivaldi (Android):
-1. Open your app URL in Vivaldi.
-2. Tap the **Vivaldi Menu Button** (top-right V icon or bottom-right menu).
-3. Scroll down and tap **"Install app"**.
-4. Confirm the installation. It will now appear in your App Drawer.
-
-### If using Chrome (Android):
-1. Open your app URL in Chrome.
-2. Tap the **three dots (⋮)**.
-3. Tap **"Install app"**.
+## ⚠️ 4. Troubleshooting
+- **Blank Screen?** Check the browser console (if possible) or ensure `serve.py` is running. 
+- **Still Blank?** Ensure you are connected to the internet. The app needs to download React and the Transpiler from `esm.sh` once when it first loads.
+- **VNC Offline?** Run `sudo raspi-config`, go to **Advanced Options > Wayland**, and set it to **X11**.
 
 ---
 
-## 🔄 5. Keeping Data Safe
-Your data is stored in the **phone's browser cache**.
-
-1. **Upgrades:** Updating the code on your Pi won't delete your logs. Just refresh the app.
-2. **Backups:** Use the **Data Vault** icon inside the app to export a `.json` backup. This is your insurance policy.
+## 🔄 5. Data Safety
+Your data is stored in the **phone's browser**. Use the **Data Vault** icon (Database) inside the app to export a `.json` backup regularly.
