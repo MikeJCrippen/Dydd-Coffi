@@ -19,12 +19,6 @@
         margin: 0;
       }
       .font-display { font-family: 'Bricolage Grotesque', sans-serif; }
-      .glass-card {
-        background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%);
-        backdrop-filter: blur(24px);
-        -webkit-backdrop-filter: blur(24px);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-      }
     </style>
   <script type="importmap">
 {
@@ -64,7 +58,7 @@
         console.log(msg);
         logEl.classList.remove('hidden');
         const line = document.createElement('div');
-        line.className = isError ? 'text-red-500' : 'text-stone-500';
+        line.className = isError ? 'text-red-500 font-bold' : 'text-stone-500';
         line.textContent = `> ${msg}`;
         logEl.appendChild(line);
       }
@@ -73,6 +67,8 @@
         try {
           log("Compiler Ready");
           const transpiledFiles = {};
+          
+          // Order is critical here: Types -> App -> Index
           const files = [
             { id: './types', url: './types.ts' },
             { id: './App', url: './App.tsx' },
@@ -81,14 +77,26 @@
 
           for (const file of files) {
             stepEl.textContent = `Fetching ${file.url}...`;
-            log(`Loading ${file.url}`);
+            log(`Fetching ${file.url}`);
             
             const response = await fetch(file.url);
             if (!response.ok) throw new Error(`HTTP ${response.status}: Failed to find ${file.url}`);
             
-            const code = await response.text();
+            let code = await response.text();
+
+            // MANUAL LINKING:
+            // Since Blobs don't support relative paths, we replace './App' and './types' 
+            // with the actual Blob URLs we generated in the previous steps.
+            if (file.id === './App') {
+              log("Linking types.ts -> App.tsx");
+              code = code.replace(/from\s+['"]\.\/types['"]/g, `from '${transpiledFiles['./types']}'`);
+            }
+            if (file.id === 'index') {
+              log("Linking App.tsx -> index.tsx");
+              code = code.replace(/from\s+['"]\.\/App['"]/g, `from '${transpiledFiles['./App']}'`);
+            }
+
             log(`Transpiling ${file.url}`);
-            
             const transformed = Babel.transform(code, {
               presets: ['react', ['typescript', { isTSX: true, allExtensions: true }]],
               filename: file.url
@@ -98,7 +106,7 @@
             transpiledFiles[file.id] = URL.createObjectURL(blob);
           }
 
-          log("Creating Import Map");
+          log("Creating External Map");
           const im = document.createElement('script');
           im.type = 'importmap';
           im.textContent = JSON.stringify({
@@ -106,15 +114,13 @@
               "react": "https://esm.sh/react@19.2.4",
               "react-dom": "https://esm.sh/react-dom@19.2.4",
               "react-dom/client": "https://esm.sh/react-dom@19.2.4/client",
-              "lucide-react": "https://esm.sh/lucide-react@0.563.0",
-              "./App": transpiledFiles['./App'],
-              "./types": transpiledFiles['./types']
+              "lucide-react": "https://esm.sh/lucide-react@0.563.0"
             }
           });
           document.head.appendChild(im);
 
-          log("Starting Application");
-          stepEl.textContent = "Finalizing Extraction...";
+          log("Booting Application");
+          stepEl.textContent = "Igniting Boiler...";
           await import(transpiledFiles['index']);
           
         } catch (err) {
@@ -124,11 +130,9 @@
         }
       }
 
-      // Start once Babel is available
       if (window.Babel) {
         bootstrap();
       } else {
-        log("Waiting for Babel CDN...", true);
         window.onload = bootstrap;
       }
     </script>
