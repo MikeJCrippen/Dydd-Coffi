@@ -1,78 +1,34 @@
 
-# ☕ BeanLog Raspberry Pi Setup
+# ☕ BeanLog Raspberry Pi Setup (Simplified)
 
-This guide ensures your premium espresso logger is "Installable" on your Android phone using Tailscale and HTTPS.
+Follow these steps to get your espresso logger running as a native-feeling app on your phone.
 
-## 🛠 1. Tailscale CLI Setup
-Android browsers (Chrome/Vivaldi) **require** HTTPS to show the "Install App" button.
-
-1. **Enable HTTPS on Tailscale:**
-   - Go to the [Tailscale Admin Console](https://login.tailscale.com/admin/dns).
-   - Enable **MagicDNS**.
-   - Enable **HTTPS Certificates**.
-
-2. **Get your Hostname:**
-   Run this in your Pi terminal:
-   ```bash
-   tailscale status
-   ```
-   Note your Pi's full domain name (e.g., `espresso-pi.tail1234.ts.net`).
-
-3. **Fetch SSL Certificates:**
-   Run this in your project folder (replace with your actual domain):
-   ```bash
-   tailscale cert espresso-pi.tail1234.ts.net
-   ```
-   This will create two files: `espresso-pi.tail1234.ts.net.crt` and `espresso-pi.tail1234.ts.net.key`.
-
----
-
-## 🚀 2. The HTTPS Server (REQUIRED FOR INSTALL)
-Standard Python servers don't support SSL or `.tsx` files properly. Use this updated `serve_https.py`:
-
-1. Create `serve_https.py` (replace the filenames with your cert files):
-```python
-import http.server
-import ssl
-import socketserver
-
-PORT = 443 # Note: Running on 443 requires 'sudo'
-CERT_FILE = "your-pi.tailnet.ts.net.crt"
-KEY_FILE = "your-pi.tailnet.ts.net.key"
-
-class BeanLogHandler(http.server.SimpleHTTPRequestHandler):
-    def end_headers(self):
-        # Allow PWA cross-origin features
-        self.send_header('Access-Control-Allow-Origin', '*')
-        super().end_headers()
-
-BeanLogHandler.extensions_map.update({
-    '.tsx': 'application/javascript',
-    '.ts': 'application/javascript',
-    '.js': 'application/javascript',
-})
-
-context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-context.load_cert_chain(certfile=CERT_FILE, keyfile=KEY_FILE)
-
-with socketserver.TCPServer(("", PORT), BeanLogHandler) as httpd:
-    httpd.socket = context.wrap_socket(httpd.socket, server_side=True)
-    print(f"☕ BeanLog SECURE at https://your-pi.tailnet.ts.net")
-    httpd.serve_forever()
-```
-
-2. Run with sudo:
+## 🚀 Step 1: Start the Server
+Run the simple Python server. It handles the files but doesn't worry about SSL.
 ```bash
-sudo python3 serve_https.py
+python3 serve.py
 ```
+*App will be available locally at `http://<pi-ip>:8000`*
 
 ---
 
-## 📱 3. Installing on Android
-1. Open Vivaldi/Chrome on your phone.
-2. Go to `https://your-pi.tailnet.ts.net`.
-3. Look for the **"Lock" icon** in the address bar (it should be green/secure).
-4. Open the browser menu (three dots) and tap **"Install App"**.
+## 🔒 Step 2: The "Magic" PWA Step
+Android requires **HTTPS** to show the "Install App" button. Tailscale can do this for you with one command.
 
-## 🔄 4. Data Safety
-Your logs stay on your phone. Use the **Data Vault** (Database icon) to export backups to your Pi's storage via the browser download.
+1. **Enable HTTPS** once in your [Tailscale DNS Settings](https://login.tailscale.com/admin/dns).
+2. Run this on your Pi:
+```bash
+tailscale serve --bg 8000
+```
+*This command tells Tailscale to take your local site and put it on a secure HTTPS address.*
+
+---
+
+## 📱 Step 3: Install on Phone
+1. Find your Pi's Tailscale domain (run `tailscale status`).
+2. Open that `https://...` address in **Vivaldi** or **Chrome**.
+3. Tap the browser menu (three dots) -> **Install App**.
+
+## 🛠 Troubleshooting
+- **Can't connect?** Make sure `python3 serve.py` is still running.
+- **No "Install" button?** Ensure you are using the `https://` version of the address, not `http://`.
