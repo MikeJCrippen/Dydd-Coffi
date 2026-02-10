@@ -5,72 +5,38 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#050505" />
-    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="manifest" href="manifest.json" />
-    <title>BeanLog | Premium Dial-In</title>
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/924/924514.png">
+    <title>BeanLog</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Bricolage+Grotesque:wght@700;800&display=swap');
-      
-      :root {
-        --amber-glow: 245, 158, 11;
-      }
-
       body {
         font-family: 'Plus Jakarta Sans', sans-serif;
         background-color: #050505;
         color: #F9FAFB;
         margin: 0;
         overflow-x: hidden;
+        overscroll-behavior-y: contain;
       }
-
       .font-display { font-family: 'Bricolage Grotesque', sans-serif; }
-
       .glass-card {
         background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%);
         backdrop-filter: blur(24px);
         -webkit-backdrop-filter: blur(24px);
         border: 1px solid rgba(255, 255, 255, 0.08);
       }
-
       .btn-primary {
         background: #f59e0b;
         color: #000;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         box-shadow: 0 10px 30px -10px rgba(245, 158, 11, 0.4);
       }
-      
-      .btn-primary:active {
-        transform: scale(0.95);
-        filter: brightness(0.9);
-      }
-
-      .btn-secondary {
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        color: #fff;
-        backdrop-filter: blur(10px);
-        transition: all 0.2s ease;
-      }
-
-      .btn-secondary:active {
-        background: rgba(255, 255, 255, 0.1);
-        transform: scale(0.95);
-      }
-
-      .fade-in {
-        animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-      }
-
-      @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
-      }
-      
-      #debug-log:empty { display: none; }
+      .fade-in { animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+      @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
-    <!-- Single unified import map -->
     <script type="importmap">
 {
   "imports": {
@@ -86,43 +52,34 @@
   </head>
   <body>
     <div id="root">
-      <div class="flex items-center justify-center min-h-screen p-6">
-        <div id="loading-status" class="text-center space-y-6">
-          <div class="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <div>
-            <p class="text-stone-500 font-bold tracking-widest text-[10px] uppercase">Calibrating Portafilter...</p>
-            <p id="debug-step" class="text-stone-700 text-[9px] mt-2 font-mono uppercase">Initializing Compiler</p>
-          </div>
-          <div id="debug-log" class="text-left bg-black p-4 rounded-xl border border-white/5 text-[10px] font-mono text-stone-600 hidden overflow-auto max-h-40 max-w-xs mx-auto"></div>
+      <div class="flex items-center justify-center min-h-screen">
+        <div class="text-center space-y-4">
+          <div class="w-10 h-10 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p class="text-stone-700 text-[10px] font-black tracking-widest uppercase">Grinding Beans...</p>
         </div>
       </div>
     </div>
 
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
     <script type="module">
-      const logEl = document.getElementById('debug-log');
-      const stepEl = document.getElementById('debug-step');
-
+      // Robust Service Worker Registration
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js')
-            .then(reg => console.log('SW Registered'))
-            .catch(err => console.log('SW Failed', err));
+          // Use URL constructor to ensure the path is absolute to the current origin
+          const swUrl = new URL('sw.js', window.location.href).href;
+          navigator.serviceWorker.register(swUrl)
+            .then(reg => console.log('ServiceWorker registered with scope:', reg.scope))
+            .catch(err => {
+              // Only log errors if we're not in a known sandboxed/preview environment
+              if (!window.location.hostname.includes('usercontent.goog')) {
+                console.error('ServiceWorker registration failed:', err);
+              }
+            });
         });
-      }
-      
-      function log(msg, isError = false) {
-        logEl.classList.remove('hidden');
-        const line = document.createElement('div');
-        line.className = isError ? 'text-red-500' : 'text-stone-500';
-        line.textContent = `> ${msg}`;
-        logEl.appendChild(line);
       }
 
       async function bootstrap() {
         try {
-          stepEl.textContent = "Loading Modules...";
           const transpiledFiles = {};
           const files = [
             { id: './types', url: './types.ts' },
@@ -131,12 +88,10 @@
           ];
 
           for (const file of files) {
-            log(`Fetching ${file.url}`);
             const response = await fetch(file.url);
-            if (!response.ok) throw new Error(`Failed to load ${file.url}`);
+            if (!response.ok) throw new Error(`Failed to fetch ${file.url}`);
             let code = await response.text();
-
-            // Link internal references
+            
             if (file.id === './App') code = code.replace(/from\s+['"]\.\/types['"]/g, `from '${transpiledFiles['./types']}'`);
             if (file.id === 'index') code = code.replace(/from\s+['"]\.\/App['"]/g, `from '${transpiledFiles['./App']}'`);
 
@@ -148,17 +103,12 @@
             const blob = new Blob([transformed], { type: 'application/javascript' });
             transpiledFiles[file.id] = URL.createObjectURL(blob);
           }
-
-          stepEl.textContent = "Igniting Boiler...";
           await import(transpiledFiles['index']);
-          
         } catch (err) {
-          log(err.message, true);
-          stepEl.textContent = "Extraction Failed";
+          console.error("Boot error:", err);
         }
       }
-
-      if (window.Babel) bootstrap(); else window.onload = bootstrap;
+      bootstrap();
     </script>
   </body>
 </html>

@@ -1,34 +1,34 @@
 
-# ☕ BeanLog Raspberry Pi Setup (Simplified)
+# ☕ BeanLog Setup Guide
 
-Follow these steps to get your espresso logger running as a native-feeling app on your phone.
-
-## 🚀 Step 1: Start the Server
-Run the simple Python server. It handles the files but doesn't worry about SSL.
-```bash
-python3 serve.py
-```
-*App will be available locally at `http://<pi-ip>:8000`*
+The app is built to be a **Standalone PWA**. Since it uses your browser's local storage, your data stays on your phone regardless of where the files are hosted.
 
 ---
 
-## 🔒 Step 2: The "Magic" PWA Step
-Android requires **HTTPS** to show the "Install App" button. Tailscale can do this for you with one command.
+## 💎 Option A: The "Cleanest" Way (Recommended)
+Host the files on a free service. This gives you a permanent `https://` address and the **"Install App"** button on your phone.
 
-1. **Enable HTTPS** once in your [Tailscale DNS Settings](https://login.tailscale.com/admin/dns).
-2. Run this on your Pi:
-```bash
-tailscale serve --bg 8000
-```
-*This command tells Tailscale to take your local site and put it on a secure HTTPS address.*
+1. Go to [Netlify Drop](https://app.netlify.com/drop).
+2. Drag and drop this entire folder into the browser.
+3. Once it's live, open that URL on your phone in Vivaldi/Chrome.
+4. Tap **"Install App"** or **"Add to Home Screen"**.
+5. **Done.** No server to maintain, works 100% offline.
 
 ---
 
-## 📱 Step 3: Install on Phone
-1. Find your Pi's Tailscale domain (run `tailscale status`).
-2. Open that `https://...` address in **Vivaldi** or **Chrome**.
-3. Tap the browser menu (three dots) -> **Install App**.
+## 🏠 Option B: The "Local Pi" Way
+Use this if you want to keep everything on your local network.
 
-## 🛠 Troubleshooting
-- **Can't connect?** Make sure `python3 serve.py` is still running.
-- **No "Install" button?** Ensure you are using the `https://` version of the address, not `http://`.
+1. On your Pi, run:
+   ```bash
+   python3 serve.py
+   ```
+2. On your phone, go to `http://<your-pi-ip>:8000`.
+3. **Note:** Because it is `http` (not `https`), you won't see an "Install App" button. 
+4. Instead, open the Vivaldi menu and tap **"Add to Home Screen"**.
+5. It will still create an icon on your phone and open in a standalone window!
+
+---
+
+## 💾 Data Safety
+Because your data is stored in your phone's browser, use the **Data Vault** (Database icon) inside the app to export `.json` backups occasionally. You can then import these backups into any other browser or device.
