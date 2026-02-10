@@ -1,15 +1,11 @@
-
-const CACHE_NAME = 'beanlog-v5';
+const CACHE_NAME = 'beanlog-v6';
 const ASSETS = [
-  './',
-  'index.html',
-  'manifest.json',
+  '/',
+  '/index.html',
+  '/manifest.json',
   'https://cdn.tailwindcss.com',
   'https://unpkg.com/@babel/standalone/babel.min.js'
 ];
-
-// We avoid pre-caching TSX files here to ensure the bootstrapper 
-// handles them with fresh versions via the version param.
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -34,11 +30,22 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Always let versioned requests bypass the cache to ensure we can recover from errors
+  // 1. Skip cache-busting versioned requests
   if (event.request.url.includes('?v=')) {
     return; 
   }
 
+  // 2. Handle navigation requests (PWA Launch)
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).catch(() => {
+        return caches.match('/index.html') || caches.match('/');
+      })
+    );
+    return;
+  }
+
+  // 3. Standard asset caching
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) return cachedResponse;
