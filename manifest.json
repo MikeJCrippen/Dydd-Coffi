@@ -2,7 +2,7 @@
 {
   "name": "BeanLog Espresso",
   "short_name": "BeanLog",
-  "start_url": "/",
+  "start_url": "./",
   "display": "standalone",
   "display_override": ["fullscreen", "standalone", "minimal-ui"],
   "background_color": "#050505",

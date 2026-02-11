@@ -1,0 +1,15 @@
+
+<!-- GitHub Pages Hack: Redirects all 404s back to index.html -->
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>BeanLog</title>
+    <script type="text/javascript">
+      // Simple redirect to home
+      window.location.href = window.location.pathname.split('/').slice(0, -1).join('/') + '/index.html';
+    </script>
+  </head>
+  <body style="background: #050505;">
+  </body>
+</html>
