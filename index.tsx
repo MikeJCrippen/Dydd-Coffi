@@ -1,10 +1,16 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom/client';
 import { 
   Coffee, Plus, ChevronLeft, Star, ArrowUpDown, Trash2, 
   ChevronRight, Database, X, Zap, Download, Upload, Edit3, Camera
 } from 'lucide-react';
+
+// --- Global Type Extensions ---
+declare global {
+  interface Window {
+    emergencyReset: () => Promise<void>;
+  }
+}
 
 // --- Types ---
 type OriginType = 'Single Origin' | 'Blend';
@@ -42,18 +48,20 @@ type ViewState =
 
 const STORAGE_KEY = 'bean_log_data_v1';
 
-// Fix: Add window augmentation and implementation for the emergencyReset function used in the UI
-declare global {
-  interface Window {
-    emergencyReset: () => void;
+// Stable UUID Fallback for local/non-secure contexts
+const generateUUID = () => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    try {
+      return crypto.randomUUID();
+    } catch (e) {
+      // Fallback if crypto.randomUUID is restricted
+    }
   }
-}
-
-window.emergencyReset = () => {
-  if (window.confirm("CRITICAL: This will wipe all Bragu Pro logs and settings. Proceed?")) {
-    localStorage.removeItem(STORAGE_KEY);
-    window.location.reload();
-  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
 };
 
 // --- Utilities ---
@@ -111,7 +119,7 @@ const App: React.FC = () => {
   }, [beans, shots]);
 
   const addBean = (bean: Omit<Bean, 'id' | 'createdAt'>) => {
-    const newBean: Bean = { ...bean, id: crypto.randomUUID(), createdAt: Date.now() };
+    const newBean: Bean = { ...bean, id: generateUUID(), createdAt: Date.now() };
     setBeans(prev => [newBean, ...prev]);
     setView({ type: 'bean-list' });
   };
@@ -130,7 +138,7 @@ const App: React.FC = () => {
   };
 
   const addShot = (shot: Omit<Shot, 'id' | 'timestamp'>) => {
-    const newShot: Shot = { ...shot, id: crypto.randomUUID(), timestamp: Date.now() };
+    const newShot: Shot = { ...shot, id: generateUUID(), timestamp: Date.now() };
     setShots(prev => [newShot, ...prev]);
     setView({ type: 'bean-details', beanId: shot.beanId });
   };
@@ -178,7 +186,7 @@ const App: React.FC = () => {
     <div className="max-w-xl mx-auto px-6 pt-safe pb-safe min-h-[100dvh] flex flex-col fade-in">
       <header className="flex justify-between items-center mb-12 mt-2 px-2">
         <div className="flex-1 min-w-0 pr-6">
-          <span className="text-[10px] font-black tracking-[0.4em] text-amber-500/60 uppercase">Bragu Pro v0.5</span>
+          <span className="text-[10px] font-black tracking-[0.4em] text-amber-500/60 uppercase">Bragu Pro v0.5.1</span>
           <h1 className="text-4xl font-display text-white mt-1 leading-tight truncate">Collections</h1>
         </div>
         <div className="flex items-center gap-4 flex-shrink-0">
@@ -231,7 +239,7 @@ const App: React.FC = () => {
             <div className="text-center pt-4">
                 <Database size={48} className="text-amber-500 mx-auto mb-6" />
                 <h3 className="text-3xl font-display text-white mb-1">Data Vault</h3>
-                <p className="text-stone-500 text-xs font-bold uppercase tracking-widest">v0.5 Stable Archive</p>
+                <p className="text-stone-500 text-xs font-bold uppercase tracking-widest">v0.5.1 Stable Archive</p>
             </div>
             <div className="space-y-4 pt-4">
               <button onClick={exportData} className="w-full flex items-center justify-between p-7 bg-white/5 rounded-[2.5rem] border border-white/5 hover:bg-white/10 transition-colors"><span className="text-white font-bold">Export Backup</span><Download className="text-stone-500" /></button>
@@ -345,7 +353,6 @@ const App: React.FC = () => {
 
     return (
       <div className="min-h-[100dvh] pt-safe pb-safe bg-[#050505] fade-in flex flex-col">
-        {/* Immersive Header */}
         <div className="relative h-[45vh] w-full overflow-hidden">
           {bean.image ? (
             <img src={bean.image} className="absolute inset-0 w-full h-full object-cover" alt={bean.name} />
@@ -476,13 +483,23 @@ const App: React.FC = () => {
   );
 };
 
-// --- Mount Point ---
+// Implement emergencyReset utility
+window.emergencyReset = async () => {
+  try {
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    for (const registration of registrations) {
+      await registration.unregister();
+    }
+    const cacheKeys = await caches.keys();
+    for (const key of cacheKeys) {
+      await caches.delete(key);
+    }
+  } catch (e) {}
+  window.location.reload();
+};
+
 const rootElement = document.getElementById('root');
 if (rootElement) {
   const root = ReactDOM.createRoot(rootElement);
-  root.render(
-    <React.StrictMode>
-      <App />
-    </React.StrictMode>
-  );
+  root.render(<React.StrictMode><App /></React.StrictMode>);
 }

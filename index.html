@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en" style="background-color: #050505 !important;">
   <head>
@@ -10,7 +9,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="manifest" href="manifest.json" />
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/924/924514.png">
-    <title>Bragu Pro v0.5</title>
+    <title>Bragu Pro v0.5.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Bricolage+Grotesque:wght@700;800&display=swap');
@@ -70,7 +69,6 @@
         box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
       }
 
-      /* Safe area helpers */
       .pt-safe { padding-top: env(safe-area-inset-top); }
       .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
       .px-safe { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
@@ -91,10 +89,11 @@
   <body class="bg-[#050505]">
     <div id="root">
       <div id="loader" class="flex items-center justify-center h-[100dvh] bg-[#050505]">
-        <div class="text-center space-y-6 max-w-xs w-full">
-          <div id="spinner" class="w-10 h-10 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <div class="space-y-2">
-            <p id="status-text" class="text-stone-700 text-[10px] font-black tracking-widest uppercase text-center">v0.5 System Boot...</p>
+        <div class="text-center space-y-6 max-w-xs w-full px-8">
+          <div id="spinner" class="w-12 h-12 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <div class="space-y-3">
+            <p id="status-text" class="text-stone-700 text-[10px] font-black tracking-widest uppercase text-center">v0.5.1 System Initializing...</p>
+            <p id="error-hint" class="text-red-500/50 text-[9px] font-bold uppercase hidden">Tap Screen to Reset Cache</p>
           </div>
         </div>
       </div>
@@ -143,6 +142,20 @@ type ViewState =
   | { type: 'add-shot'; beanId: string };
 
 const STORAGE_KEY = 'bean_log_data_v1';
+
+// Stable UUID Fallback
+const generateUUID = () => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    try {
+      return crypto.randomUUID();
+    } catch (e) {}
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+};
 
 const compressImage = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -195,7 +208,7 @@ const App: React.FC = () => {
   }, [beans, shots]);
 
   const addBean = (bean: Omit<Bean, 'id' | 'createdAt'>) => {
-    const newBean: Bean = { ...bean, id: crypto.randomUUID(), createdAt: Date.now() };
+    const newBean: Bean = { ...bean, id: generateUUID(), createdAt: Date.now() };
     setBeans(prev => [newBean, ...prev]);
     setView({ type: 'bean-list' });
   };
@@ -214,7 +227,7 @@ const App: React.FC = () => {
   };
 
   const addShot = (shot: Omit<Shot, 'id' | 'timestamp'>) => {
-    const newShot: Shot = { ...shot, id: crypto.randomUUID(), timestamp: Date.now() };
+    const newShot: Shot = { ...shot, id: generateUUID(), timestamp: Date.now() };
     setShots(prev => [newShot, ...prev]);
     setView({ type: 'bean-details', beanId: shot.beanId });
   };
@@ -262,7 +275,7 @@ const App: React.FC = () => {
     <div className="max-w-xl mx-auto px-6 pt-safe pb-safe min-h-[100dvh] flex flex-col fade-in">
       <header className="flex justify-between items-center mb-12 mt-2 px-2">
         <div className="flex-1 min-w-0 pr-6">
-          <span className="text-[10px] font-black tracking-[0.4em] text-amber-500/60 uppercase">Bragu Pro v0.5</span>
+          <span className="text-[10px] font-black tracking-[0.4em] text-amber-500/60 uppercase">Bragu Pro v0.5.1</span>
           <h1 className="text-4xl font-display text-white mt-1 leading-tight truncate">Collections</h1>
         </div>
         <div className="flex items-center gap-4 flex-shrink-0">
@@ -315,7 +328,7 @@ const App: React.FC = () => {
             <div className="text-center pt-4">
                 <Database size={48} className="text-amber-500 mx-auto mb-6" />
                 <h3 className="text-3xl font-display text-white mb-1">Data Vault</h3>
-                <p className="text-stone-500 text-xs font-bold uppercase tracking-widest">v0.5 Stable Archive</p>
+                <p className="text-stone-500 text-xs font-bold uppercase tracking-widest">v0.5.1 Stable Archive</p>
             </div>
             <div className="space-y-4 pt-4">
               <button onClick={exportData} className="w-full flex items-center justify-between p-7 bg-white/5 rounded-[2.5rem] border border-white/5 hover:bg-white/10 transition-colors"><span className="text-white font-bold">Export Backup</span><Download className="text-stone-500" /></button>
@@ -447,15 +460,67 @@ const App: React.FC = () => {
       </div>
     );
   };
-  return (<div className="h-[100dvh] w-screen bg-[#050505] text-stone-100 flex flex-col overflow-hidden"><div className="flex-1 overflow-y-auto">{view.type === 'bean-list' && <BeanList />}{view.type === 'add-bean' && <BeanForm />}{view.type === 'edit-bean' && <BeanForm beanId={view.beanId} />}{view.type === 'bean-details' && <BeanDetails beanId={view.beanId} />}{view.type === 'add-shot' && <AddShotForm beanId={view.beanId} />}</div></div>);
+
+  const AddShotForm = ({ beanId }: { beanId: string }) => {
+    const last = shots.filter(s => s.beanId === beanId)[0];
+    const [fd, setFd] = useState({ beanId, dose: last?.dose || 18, yield: last?.yield || 36, time: last?.time || 30, grindSetting: last?.grindSetting || '', rating: 7, notes: '' });
+    return (
+      <div className="max-w-xl mx-auto px-6 pt-safe pb-safe min-h-[100dvh] flex flex-col fade-in">
+        <header className="flex items-center justify-between mb-16 mt-2 px-2">
+          <button onClick={() => setView({ type: 'bean-details', beanId })} className="glass-card p-4 rounded-full transition-transform active:scale-90"><ChevronLeft size={28} /></button>
+          <h2 className="text-[10px] font-black text-white uppercase tracking-[0.4em]">Log Protocol</h2>
+          <div className="w-14"/>
+        </header>
+        <form onSubmit={e => { e.preventDefault(); addShot(fd); }} className="space-y-8 flex-1 flex flex-col">
+          <div className="glass-card p-12 rounded-[64px] space-y-12 shadow-2xl">
+            <div className="grid grid-cols-2 gap-10 text-center">
+              <div><label className="text-[10px] text-stone-600 uppercase font-black block mb-4">Dose (g)</label><input type="number" step="0.1" className="w-full bg-white/5 p-5 rounded-3xl text-3xl font-display text-center outline-none text-white focus:border-amber-500/20 border border-transparent" value={fd.dose} onChange={e => setFd({...fd, dose: +e.target.value})} /></div>
+              <div><label className="text-[10px] text-stone-600 uppercase font-black block mb-4">Yield (g)</label><input type="number" step="0.5" className="w-full bg-white/5 p-5 rounded-3xl text-3xl font-display text-center outline-none text-white focus:border-amber-500/20 border border-transparent" value={fd.yield} onChange={e => setFd({...fd, yield: +e.target.value})} /></div>
+            </div>
+            <div className="text-center relative">
+                <label className="text-[10px] text-stone-600 uppercase font-black block mb-4">Seconds</label>
+                <input type="number" className="w-full bg-white/5 p-10 rounded-[3rem] text-7xl font-display text-center outline-none text-white focus:border-amber-500/20 border border-transparent" value={fd.time} onChange={e => setFd({...fd, time: +e.target.value})} />
+                <div className="absolute top-1/2 right-12 translate-y-2 opacity-20 text-4xl font-display">s</div>
+            </div>
+          </div>
+          <div className="glass-card p-10 rounded-[56px] space-y-8 shadow-xl">
+            <div><label className="text-[10px] text-stone-600 uppercase font-black mb-6 block">Grind Index</label><input type="text" className="w-full bg-white/5 p-6 rounded-[2rem] text-4xl font-display outline-none text-amber-500 text-center focus:border-amber-500/20 border border-transparent" placeholder="..." value={fd.grindSetting} onChange={e => setFd({...fd, grindSetting: e.target.value})} /></div>
+            <div>
+                <div className="flex justify-between items-center mb-6 px-2"><label className="text-[10px] text-stone-600 uppercase font-black">Success Rate</label><span className="text-amber-500 font-black text-xl">{fd.rating}/10</span></div>
+                <input type="range" min="1" max="10" className="w-full h-3 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-500" value={fd.rating} onChange={e => setFd({...fd, rating: +e.target.value})} />
+            </div>
+          </div>
+          <div className="mt-auto pb-10">
+            <button type="submit" className="btn-primary w-full py-8 rounded-[3.5rem] font-black uppercase text-black shadow-2xl text-[16px] tracking-widest active:scale-[0.98] transition-transform">Commit Extraction</button>
+          </div>
+        </form>
+      </div>
+    );
+  };
+
+  return (
+    <div className="h-[100dvh] w-screen bg-[#050505] text-stone-100 flex flex-col overflow-hidden">
+      <div className="flex-1 overflow-y-auto">
+        {view.type === 'bean-list' && <BeanList />}
+        {view.type === 'add-bean' && <BeanForm />}
+        {view.type === 'edit-bean' && <BeanForm beanId={view.beanId} />}
+        {view.type === 'bean-details' && <BeanDetails beanId={view.beanId} />}
+        {view.type === 'add-shot' && <AddShotForm beanId={view.beanId} />}
+      </div>
+    </div>
+  );
 };
+
+// Mount
 const rootElement = document.getElementById('root');
-if (rootElement) { ReactDOM.createRoot(rootElement).render(<React.StrictMode><App /></React.StrictMode>); }
+if (rootElement) {
+  const root = ReactDOM.createRoot(rootElement);
+  root.render(<React.StrictMode><App /></React.StrictMode>);
+}
     </script>
 
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script type="module">
-      if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); }); }
       window.emergencyReset = async () => {
         try {
           const registrations = await navigator.serviceWorker.getRegistrations();
@@ -465,24 +530,67 @@ if (rootElement) { ReactDOM.createRoot(rootElement).render(<React.StrictMode><Ap
         } catch (e) {}
         window.location.reload(true);
       };
+
       async function bootstrap() {
+        const st = document.getElementById('status-text');
+        const eh = document.getElementById('error-hint');
+
         try {
+          if (st) st.innerText = 'v0.5.1 Loading Source...';
           const code = document.getElementById('app-source').textContent;
+          
+          if (st) st.innerText = 'v0.5.1 Compiling Dial-In...';
           const transformed = Babel.transform(code, {
-            presets: [['react', { runtime: 'automatic' }], ['typescript', { isTSX: true, allExtensions: true }]],
+            presets: [
+              ['react', { runtime: 'automatic' }],
+              ['typescript', { isTSX: true, allExtensions: true }]
+            ],
             filename: 'index.tsx'
           }).code;
+
+          if (st) st.innerText = 'v0.5.1 Mounting Interface...';
           const blob = new Blob([transformed], { type: 'application/javascript' });
           const blobUrl = URL.createObjectURL(blob);
           await import(blobUrl);
         } catch (err) {
-          console.error("Bootstrap error:", err);
-          const st = document.getElementById('status-text');
-          if (st) st.innerText = 'Bootstrap Fault - Tap to Reset';
-          document.body.onclick = () => emergencyReset();
+          console.error("Bootstrap Critical Error:", err);
+          if (st) st.innerText = 'Bootstrap Fault';
+          if (eh) {
+            eh.classList.remove('hidden');
+            document.body.onclick = () => emergencyReset();
+          }
         }
       }
-      bootstrap();
+
+      // Improved Service Worker Registration
+      // We only register if the protocol is HTTPS or localhost
+      // and if we are not in a restricted frame environment that causes origin mismatch
+      const isLocalhost = Boolean(
+        window.location.hostname === 'localhost' ||
+        window.location.hostname === '[::1]' ||
+        window.location.hostname.match(/^127(?:\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}$/)
+      );
+
+      if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || isLocalhost)) {
+        window.addEventListener('load', () => {
+          // Check if we are in an iframe or special origin situation
+          const scriptUrl = './sw.js';
+          
+          navigator.serviceWorker.register(scriptUrl).then(registration => {
+            console.log('SW registered:', registration.scope);
+          }).catch(err => {
+            // Silently fail if it's a security/origin mismatch (common in sandboxed previews)
+            if (err.message.includes('origin') || err.name === 'SecurityError') {
+              console.warn('Service Worker registration skipped due to environment restrictions.');
+            } else {
+              console.error('Service Worker registration failed:', err);
+            }
+          });
+        });
+      }
+
+      // Small delay to ensure browser assets are settled
+      setTimeout(bootstrap, 50);
     </script>
   </body>
 </html>

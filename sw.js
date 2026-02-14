@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'bragupro-v11';
+const CACHE_NAME = 'bragupro-v13';
 const ASSETS = [
   './',
   './index.html',
